@@ -1,5 +1,5 @@
 # Stm32-hello-world
-Bare Metal "Hello World!"-Project for Stm32f401re Nucleo board
+Bare Metal "Hello World!"-Project for Stm32f401re Nucleo board.
 A LED blinks at about 0.5 Hz and "HELLO WORLD!" is displayed by a SH1106 module via i2c.
 
 This projected served the purpose of developing a better understanding about how 
