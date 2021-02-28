@@ -514,7 +514,7 @@
 		
 		i2c_transmission_t oled_command;
 		oled_command.adress = OLED_Adress_LOW;
-		oled_command.len = 6+2144+172; // 166 -> HELLO WORLD!
+		oled_command.len = 6+2144+172; // 172 -> HELLO WORLD!, 2144 -> Clear the display, 6 -> set contrast and turn it on
 		char data[oled_command.len];
 		
 		/* display hello word */
@@ -530,7 +530,7 @@
 		data[oled_command.len-2] = 0x00;
 		data[oled_command.len-1] = 0xAf; // turn display on
 		
-		//set every page white;
+		//set every page black;
 		for(int j = 0; j < 8; j++){
 			data[j*268+0] = 0x80;
 			data[j*268+1] = 0xB0 + j;	//set page
