@@ -1,4 +1,4 @@
-
+/* Extern variables from the linker scipt */
 	extern unsigned long _sisr_vector;
 	extern unsigned long _esisr_vector;
 	extern unsigned long _etext;
@@ -10,6 +10,7 @@
 	extern unsigned long _min_stack_size;
 	extern unsigned long _stack_top; // bigger Memory Adress
 	
+/* This global struct is used for I2C transmission and gives a tiny bit of encapsulation. */
 	typedef volatile struct {
 			volatile char adress;
 			volatile int len;
@@ -24,9 +25,9 @@
 	 *	Custom Memory Section names: .isr_vector 	._stack	 *
 	 *													 	 *
 	 *********************************************************/
-
-	typedef void (*isr_handler)(void);
 	
+	typedef void (*isr_handler)(void);
+	//addresses from the reference manual 
 	#define RCC_Base 0x40023800
 	#define GPIOA_Base 0x40020000
 	#define GPIOB_Base 0x40020400
@@ -41,7 +42,9 @@
 	
 	#define OLED_Adress_HIGH 0x3D
 	#define OLED_Adress_LOW 0x3C //0b0111100 and 0b0111101 are possible
-	
+
+	/*The attributes provided here are ignored so they could be omitted as well.
+	  If the attributes weren't ignored one could simply override this place holder definition.*/
 	#define DEFAULT_HANDLER(name) __attribute__((interrupt)) __attribute__((used)) __attribute__((weak)) __attribute__((noreturn)) void name(void)  {while(1);}
 	
 		DEFAULT_HANDLER(NMI_Handler);
@@ -124,6 +127,8 @@
 	void I2C1_EV_HANDLER(void);
 	void I2C1_transmitt(i2c_transmission_t);
 	
+	/* The memory addressing could be done a lot better by using the (obvious) systematics but for simplicity I declared them this way */
+	
 		//System Control Block Register
 		volatile unsigned int* CCR = (unsigned int*) 0xE000ED14;
 		
@@ -174,7 +179,7 @@
 		volatile unsigned int* TIM2_DIER = (unsigned int*) (TIM2_Base + 0x0C);
 		volatile unsigned int* TIM2_SR = (unsigned int*) (TIM2_Base + 0x10);
 	
-	
+	 
 	__attribute__((section(".isr_vector"))) isr_handler isr_vector_table[] = {
 
 		(isr_handler)&_stack_top, //000
@@ -279,11 +284,11 @@
 		0,//18c
 		SPI4_HANDLER//190
 	};
-	
+	//this Handler is called on reset 
 	void Reset_Handler (void) {
 		
-		init_bss();
-		init_data();
+		init_bss();	//initializes bss section to 0
+		init_data();	//writes data section from flash to sram
 		init_system();
 		main();
 
@@ -298,7 +303,7 @@
 		while(1);
 	}
 	
-	void USAGE_FAULT_HANDLER(void){
+	void USAGE_FAULT_HANDLER(void){	//As the corresponding interrupt is not activated in code this function will never be called. Instead a Hard Fault is generated.
 		
 		*GPIOA_BSRR &= ~(0x01 << 5); //clear PA5 set
 		*GPIOA_BSRR &= ~(0x01 << 21); //clear PA5 reset
@@ -417,7 +422,7 @@
 	}
 	
 	
-	void TIM2_HANDLER(void){
+	void TIM2_HANDLER(void){	//Toggling the LED by using XOR and the GPIOA_ODR would be a better aproach for blinking than using a static variable.
 		
 		volatile static int state = 0;
 		
@@ -441,8 +446,9 @@
 
 	}
 	
-	
-	void I2C1_EV_HANDLER(void) {
+	/*Here the transmission process takes place. A more generic Handler could be programmed but that would take a lot more time desinging, programming and
+	 debugging. The current implementation was enough for me to understand how hardware support for protocolls work, so the implementation stayed like that*/
+	void I2C1_EV_HANDLER(void) {	
 		
 		if(i2c_tx.pos == -2){
 			while((*I2C1_SR1 & 1) == 0); //wait for start bit
@@ -496,6 +502,15 @@
 	}
 	
 	int main(void){
+		/* This is the worst programmed part of the code as the data to be displayed is harcoded and reused letters were copy- and pasted. For a better implementation
+		   the letters should be stored in arrays and a function to write those to the buffer should be provided. The display used is a sh1106 128x64-pixel OLED.
+		   The Display is orginazied in columns and pages. A page consists of 131 columns (the first visible column is 4!) which are 8 pixels high. There are a total of
+		   8 pages (0-7). The protocoll for sending information was taken from the datasheet. It consists of one control byte followed by a byte of data. The control byte
+		   uses the two MSB to tell if the data is a command or data to display. The column pointer will be increment each time data was provided to it, so a page can be
+		   fully set without commands. The display counts columns and pages starting from the bottom right corner (it can be rotated by software) so "HELLO WORLD!" 
+		   is written mirrored to display it the right way.
+		   A better implementation for interfacing the display than just hardcoding the control bytes should also be used - I only wrote it this way for 
+		   simplicity!!*/
 		
 		i2c_transmission_t oled_command;
 		oled_command.adress = OLED_Adress_LOW;
